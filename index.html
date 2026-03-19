@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سماء حبنا - قيس ورهف</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            font-family: 'Amiri', serif;
+            color: #fff;
+            touch-action: manipulation; /* يمنع التكبير المزدوج المزعج في الجوال */
+        }
+
+        /* سماء النجوم الخلفية */
+        #stars-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* حاوية المحتوى الزجاجية */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            border-radius: 24px;
+        }
+
+        /* تخصيص شريط التمرير (Scrollbar) للهواتف */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05); 
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(251, 113, 133, 0.5); 
+            border-radius: 10px;
+        }
+
+        /* النجوم القابلة للنقر (تم تكبيرها للجوال) */
+        .glowing-star {
+            position: absolute;
+            width: 45px; /* حجم مناسب لإصبع اليد */
+            height: 45px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.5s ease;
+            animation: pulse-star 2s infinite alternate;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glowing-star svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 12px #fb7185) drop-shadow(0 0 25px #fb7185);
+            color: #fff0f5;
+        }
+
+        @keyframes pulse-star {
+            0% { transform: scale(0.85); opacity: 0.8; }
+            100% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* رسائل النجوم المنبثقة (متوافقة مع الجوال) */
+        .star-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            opacity: 0;
+            background: radial-gradient(circle, rgba(225,29,72,0.85) 0%, rgba(136,19,55,0.95) 100%);
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 1.4rem;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(225, 29, 72, 0.6);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+            pointer-events: none;
+            font-family: 'Aref Ruqaa', serif;
+            line-height: 1.6;
+        }
+
+        .star-message.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        /* تأثير الآلة الكاتبة */
+        .typewriter-text {
+            font-size: 1.4rem; /* حجم مناسب للقراءة على الجوال */
+            line-height: 2.2;
+            color: #fce7f3;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.1em;
+            background-color: #fb7185;
+            vertical-align: middle;
+            animation: blink 0.8s infinite;
+            margin-right: 4px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* تأثير اختفاء العناصر */
+        .fade-out {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 1.5s ease, visibility 1.5s;
+        }
+        
+        .fade-in {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transition: opacity 2s ease;
+        }
+
+        /* زر الموسيقى */
+        .music-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            animation: spin-slow 4s linear infinite;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .music-btn.paused {
+            animation: none;
+            opacity: 0.5;
+        }
+
+        @keyframes spin-slow {
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- موسيقى رومانسية هادئة -->
+    <audio id="bg-music" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=romantic-piano-110052.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- زر التحكم بالموسيقى -->
+    <div id="music-control" class="music-btn paused" onclick="toggleMusic()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-rose-300"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+    </div>
+
+    <!-- سماء النجوم الخلفية -->
+    <canvas id="stars-canvas"></canvas>
+
+    <!-- شاشة الترحيب -->
+    <div id="welcome-screen" class="absolute inset-0 flex items-center justify-center z-20 transition-opacity duration-1000 p-4">
+        <div class="glass-panel p-8 w-full max-w-sm text-center">
+            <h1 class="text-4xl font-bold mb-6 text-rose-300 font-['Aref_Ruqaa']">إلى أميرتي رهف ❤️</h1>
+            <p class="text-lg mb-8 leading-relaxed text-gray-200">
+                أغمضي عينيكِ قليلاً، خذي نفساً عميقاً...<br>
+                لقد خبأت لكِ مشاعري بين النجوم في هذه السماء.<br>
+                ابحثي عن <span class="text-rose-400 font-bold">5 نجوم متوهجة</span> واضغطي عليها لتكتشفي ما يخفيه قلبي لكِ.
+            </p>
+            <button onclick="startJourney()" class="w-full bg-rose-600/80 hover:bg-rose-500 text-white border border-rose-400 font-bold py-3 px-6 rounded-2xl shadow-[0_0_15px_rgba(225,29,72,0.5)] transform transition hover:scale-[1.02] text-lg tracking-wide active:scale-95">
+                ابدئي الرحلة 🎵
+            </button>
+        </div>
+    </div>
+
+    <!-- شاشة اللعب (العداد) -->
+    <div id="game-ui" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-20 opacity-0 invisible transition-opacity duration-1000 w-11/12 max-w-xs">
+        <div class="glass-panel px-6 py-3 rounded-2xl flex justify-between items-center w-full">
+            <span class="text-rose-200 text-base font-bold">النجوم المكتشفة:</span>
+            <div class="flex items-center gap-1 text-2xl font-black text-white">
+                <span id="stars-count">0</span>
+                <span class="text-rose-400 text-lg">/ 5</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاوية النجوم القابلة للنقر -->
+    <div id="interactive-stars" class="absolute inset-0 z-10 pointer-events-none opacity-0 transition-opacity duration-1000">
+        <!-- تضاف النجوم هنا -->
+    </div>
+
+    <!-- رسالة النجمة المنبثقة -->
+    <div id="star-popup" class="star-message"></div>
+
+    <!-- شاشة الرسالة النهائية (مهيأة للجوال بـ Scroll) -->
+    <div id="final-screen" class="absolute inset-0 flex items-center justify-center z-30 opacity-0 invisible p-4">
+        <!-- max-h-[80vh] يضمن عدم خروج المربع عن الشاشة، overflow-y-auto يسمح بالتمرير -->
+        <div id="final-panel-container" class="glass-panel p-6 pt-10 pb-8 w-full max-w-md max-h-[85vh] overflow-y-auto custom-scrollbar relative text-center">
+            
+            <div class="absolute -top-8 left-1/2 transform -translate-x-1/2">
+                <div class="w-16 h-16 bg-rose-900 rounded-full flex items-center justify-center border-2 border-rose-400/50 shadow-[0_0_20px_rgba(225,29,72,0.5)]">
+                    <span class="text-3xl">❤️</span>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-right min-h-[200px]">
+                <span id="typewriter-text" class="typewriter-text"></span><span class="cursor" id="cursor"></span>
+            </div>
+            
+            <div id="signature" class="mt-10 text-left opacity-0 transition-opacity duration-1000 pb-2">
+                <p class="text-rose-400 font-bold text-2xl font-['Aref_Ruqaa']">من إعداد: قيس جازي</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // إعدادات الخلفية
+        const canvas = document.getElementById('stars-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let stars = [];
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Star {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 1.5;
+                this.speedX = (Math.random() - 0.5) * 0.15;
+                this.speedY = (Math.random() - 0.5) * 0.15;
+                this.opacity = Math.random();
+                this.opacityChange = (Math.random() * 0.02) + 0.005;
+                this.growing = Math.random() > 0.5;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > width) this.speedX *= -1;
+                if (this.y < 0 || this.y > height) this.speedY *= -1;
+
+                if (this.growing) {
+                    this.opacity += this.opacityChange;
+                    if (this.opacity >= 1) this.growing = false;
+                } else {
+                    this.opacity -= this.opacityChange;
+                    if (this.opacity <= 0.1) this.growing = true;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 150; i++) {
+            stars.push(new Star());
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, width, height);
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            requestAnimationFrame(animateStars);
+        }
+        animateStars();
+
+        // منطق اللعبة
+        const audio = document.getElementById('bg-music');
+        const musicBtn = document.getElementById('music-control');
+        let isMusicPlaying = false;
+        
+        const loveNotes = [
+            "أنتِ أجمل صدفة أهداني إياها القدر 💖",
+            "في عيونكِ أرى كل تفاصيل مستقبلي ✨",
+            "صوتكِ هو موسيقاي المفضلة التي لا أمل منها 🎵",
+            "كل يوم أعيشه معكِ هو عيد حب بالنسبة لي 🌹",
+            "أنتِ النجمة الوحيدة التي تضيء عتمة أيامي 🌟"
+        ];
+        
+        let foundStars = 0;
+        const totalStars = 5;
+        let activeNotes = [...loveNotes];
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                audio.pause();
+                musicBtn.classList.add('paused');
+            } else {
+                audio.play();
+                musicBtn.classList.remove('paused');
+            }
+            isMusicPlaying = !isMusicPlaying;
+        }
+
+        function startJourney() {
+            audio.play().then(() => {
+                isMusicPlaying = true;
+                musicBtn.classList.remove('paused');
+            }).catch(e => console.log("المتصفح يمنع التشغيل التلقائي"));
+
+            document.getElementById('welcome-screen').classList.add('fade-out');
+            
+            setTimeout(() => {
+                const ui = document.getElementById('game-ui');
+                const interactiveArea = document.getElementById('interactive-stars');
+                
+                ui.classList.add('fade-in');
+                interactiveArea.classList.add('fade-in');
+                interactiveArea.style.pointerEvents = 'auto';
+                
+                spawnStars();
+            }, 800);
+        }
+
+        function spawnStars() {
+            const container = document.getElementById('interactive-stars');
+            
+            // تحديد مساحات آمنة لظهور النجوم لكي لا تختفي خلف الأزرار
+            for (let i = 0; i < totalStars; i++) {
+                const starEl = document.createElement('div');
+                starEl.className = 'glowing-star';
+                
+                const top = Math.random() * 60 + 20; // بين 20% و 80% 
+                const left = Math.random() * 70 + 15; // بين 15% و 85%
+                
+                starEl.style.top = `${top}%`;
+                starEl.style.left = `${left}%`;
+                starEl.style.animationDelay = `${Math.random() * 2}s`;
+                
+                starEl.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                `;
+
+                starEl.ontouchstart = function(e) {
+                    e.preventDefault(); // يمنع السلوك الافتراضي للمس
+                    collectStar(this);
+                };
+                starEl.onclick = function() {
+                    collectStar(this);
+                };
+
+                container.appendChild(starEl);
+            }
+        }
+
+        function collectStar(element) {
+            element.style.pointerEvents = 'none';
+            element.style.transform = 'scale(2.5)';
+            element.style.opacity = '0';
+            
+            setTimeout(() => element.remove(), 400);
+
+            foundStars++;
+            document.getElementById('stars-count').innerText = foundStars;
+
+            const noteIndex = Math.floor(Math.random() * activeNotes.length);
+            const noteText = activeNotes.splice(noteIndex, 1)[0];
+            
+            showPopup(noteText);
+
+            if (foundStars === totalStars) {
+                setTimeout(endJourney, 2500);
+            }
+        }
+
+        function showPopup(text) {
+            const popup = document.getElementById('star-popup');
+            popup.innerText = text;
+            popup.classList.add('show');
+            
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 2000);
+        }
+
+        function endJourney() {
+            document.getElementById('game-ui').classList.remove('fade-in');
+            document.getElementById('game-ui').classList.add('fade-out');
+            document.getElementById('interactive-stars').classList.remove('fade-in');
+            document.getElementById('interactive-stars').classList.add('fade-out');
+
+            setTimeout(() => {
+                const finalScreen = document.getElementById('final-screen');
+                finalScreen.classList.add('fade-in');
+                
+                // النص مقسم بوضوح لكي ينزل بشكل جميل للأسفل
+                const message = "يا رهف... يا أجمل قدر كُتب لي.\n\nلم تكوني يوماً مجرد حبيبة، بل أنتِ السكينة التي أبحث عنها في نهاية كل يوم.\n\nعندما جمعتِ نجوم هذه السماء، كنتِ تجمعين أجزاء قلبي التي تنبض باسمكِ وتتوهج بحبكِ.\n\nأحبكِ بكل ما فيكِ، بضحكتكِ التي تسرق همومي، وحنيتكِ التي تملأ دنيتي دفئاً.\n\nأعدكِ أن أبقى لكِ السند والعاشق... اليوم، وغداً، وإلى الأبد.";
+                
+                typeWriter(message, document.getElementById('typewriter-text'), 0);
+            }, 1200);
+        }
+
+        function typeWriter(text, element, index) {
+            if (index < text.length) {
+                if (text.charAt(index) === '\n') {
+                    element.innerHTML += '<br>';
+                } else {
+                    element.innerHTML += text.charAt(index);
+                }
+                
+                // ميزة النزول التلقائي للأسفل (Auto-scroll) للجوال
+                const container = document.getElementById('final-panel-container');
+                container.scrollTop = container.scrollHeight;
+
+                let speed = Math.random() * 30 + 50; 
+                if (text.charAt(index) === '.' || text.charAt(index) === '،') {
+                    speed = 400; 
+                }
+
+                setTimeout(() => {
+                    typeWriter(text, element, index + 1);
+                }, speed);
+            } else {
+                document.getElementById('cursor').style.display = 'none';
+                setTimeout(() => {
+                    document.getElementById('signature').classList.remove('opacity-0');
+                    document.getElementById('signature').classList.add('opacity-100');
+                    
+                    // تمرير أخير لضمان رؤية التوقيع
+                    const container = document.getElementById('final-panel-container');
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                }, 800);
+            }
+        }
+    </script>
+</body>
+</html>
+
